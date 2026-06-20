@@ -170,41 +170,55 @@ def find_best_checkpoint(model_dir: Path):
 
 _model      = None
 _model_meta = {}
+_model_load_error = None
 
 def load_model():
-    global _model, _model_meta
+    global _model, _model_meta, _model_load_error
+    _model_load_error = None
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    best_path, checkpoint = find_best_checkpoint(MODEL_DIR)
-
-    if best_path is None:
-        log.warning("⚠️  No checkpoint found. API returns 503 until a .pth is placed in models/")
+    try:
+        best_path, checkpoint = find_best_checkpoint(MODEL_DIR)
+    except Exception as e:
+        _model_load_error = f"Checkpoint scan failed: {e}"
+        log.exception(_model_load_error)
         return
 
-    cfg         = checkpoint.get("cfg", {})
-    model_name  = cfg.get("model_name", "efficientnet_b0")
-    num_classes = cfg.get("num_classes", 14)
-    classes     = checkpoint.get("classes", CLASSES)
-    sd          = checkpoint["model_state_dict"]
+    if best_path is None:
+        _model_load_error = f"No .pth checkpoint found in {MODEL_DIR}"
+        log.warning("⚠️  %s", _model_load_error)
+        return
 
-    model = build_model(model_name, num_classes, state_dict=sd)
-    model.load_state_dict(sd)
-    model.eval()
-    model.to(DEVICE)
+    try:
+        cfg         = checkpoint.get("cfg", {})
+        model_name  = cfg.get("model_name", "efficientnet_b0")
+        num_classes = cfg.get("num_classes", 14)
+        classes     = checkpoint.get("classes", CLASSES)
+        sd          = checkpoint["model_state_dict"]
 
-    _model = model
-    _model_meta = {
-        "checkpoint":    best_path.name,
-        "model_name":    model_name,
-        "num_classes":   num_classes,
-        "val_auc":       checkpoint.get("val_auc"),
-        "val_f1":        checkpoint.get("val_f1"),
-        "trained_epoch": checkpoint.get("epoch"),
-        "classes":       list(classes),
-        "threshold":     THRESHOLD,
-        "device":        str(DEVICE),
-    }
-    log.info(f"🧠 Model ready: {model_name} | AUC={_model_meta['val_auc']} | device={DEVICE}")
+        model = build_model(model_name, num_classes, state_dict=sd)
+        model.load_state_dict(sd)
+        model.eval()
+        model.to(DEVICE)
+
+        _model = model
+        _model_meta = {
+            "checkpoint":    best_path.name,
+            "model_name":    model_name,
+            "num_classes":   num_classes,
+            "val_auc":       checkpoint.get("val_auc"),
+            "val_f1":        checkpoint.get("val_f1"),
+            "trained_epoch": checkpoint.get("epoch"),
+            "classes":       list(classes),
+            "threshold":     THRESHOLD,
+            "device":        str(DEVICE),
+        }
+        log.info(f"🧠 Model ready: {model_name} | AUC={_model_meta['val_auc']} | device={DEVICE}")
+    except Exception as e:
+        _model = None
+        _model_meta = {}
+        _model_load_error = str(e)
+        log.exception("Model load failed: %s", e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -279,6 +293,8 @@ def health():
     return jsonify({
         "status": "ok" if ready else "no_model",
         "model_ready": ready,
+        "model_dir": str(MODEL_DIR),
+        "load_error": _model_load_error,
         "service": "chest-xray-classifier",
         "classes": _model_meta.get("classes", CLASSES) if _model_meta else CLASSES,
         "model": _model_meta or None,
