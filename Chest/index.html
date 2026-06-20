@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ChestScan · AI Radiology Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --card: #161a22;
+    --border: rgba(255,255,255,0.07);
+    --accent: #4af0c4;
+    --accent2: #ff6b6b;
+    --accent3: #ffc94a;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --font-display: 'DM Serif Display', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius: 14px;
+    --glow: 0 0 40px rgba(74, 240, 196, 0.12);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid noise overlay ─────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(74,240,196,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,240,196,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────── */
+  header {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 40px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    background: rgba(10,12,16,0.8);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), #1ae8aa);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .api-status {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 14px; border-radius: 40px;
+  }
+
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+  }
+  .dot.online  { background: var(--accent);  box-shadow: 0 0 8px var(--accent); }
+  .dot.offline { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+
+  /* ── Main layout ─────────────────────────────────────────────── */
+  main {
+    position: relative; z-index: 1;
+    max-width: 1100px; margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  .hero {
+    text-align: center; margin-bottom: 56px;
+  }
+
+  .hero-label {
+    display: inline-block;
+    font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent);
+    background: rgba(74,240,196,0.08);
+    border: 1px solid rgba(74,240,196,0.2);
+    padding: 5px 14px; border-radius: 40px; margin-bottom: 20px;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    line-height: 1.1; letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+
+  h1 em { color: var(--accent); font-style: italic; }
+
+  .hero p {
+    color: var(--muted); font-size: 1.05rem; font-weight: 300;
+    max-width: 520px; margin: 0 auto;
+    line-height: 1.7;
+  }
+
+  /* ── API URL bar ─────────────────────────────────────────────── */
+  .url-row {
+    display: flex; gap: 10px; margin-bottom: 40px;
+    max-width: 680px; margin-left: auto; margin-right: auto;
+  }
+
+  .url-row input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font-mono); font-size: 0.82rem;
+    padding: 13px 18px;
+    outline: none; transition: border .2s;
+  }
+
+  .url-row input:focus { border-color: var(--accent); }
+
+  .btn-check {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text); font-family: var(--font-body); font-size: 0.85rem;
+    padding: 13px 22px; border-radius: var(--radius);
+    cursor: pointer; transition: all .2s; white-space: nowrap;
+  }
+
+  .btn-check:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Cards grid ──────────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.78rem; font-family: var(--font-mono);
+    text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+  }
+
+  .card-header .icon { font-size: 1rem; }
+
+  .card-body { padding: 24px; }
+
+  /* ── Upload zone ─────────────────────────────────────────────── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center; cursor: pointer;
+    transition: all .25s; position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(74,240,196,0.04);
+  }
+
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+
+  .upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+  .upload-zone p { color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
+
+  .upload-zone strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 0.95rem; }
+
+  /* preview */
+  #preview-wrap { display: none; position: relative; }
+  #preview-wrap img {
+    width: 100%; border-radius: 8px; object-fit: cover; max-height: 240px;
+  }
+
+  .preview-overlay {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(10,12,16,0.8); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 10px;
+    font-family: var(--font-mono); font-size: 0.7rem; color: var(--muted);
+  }
+
+  .btn-remove {
+    position: absolute; top: 8px; left: 8px;
+    background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.3);
+    color: var(--accent2); font-size: 0.75rem;
+    padding: 4px 10px; border-radius: 8px; cursor: pointer;
+  }
+
+  /* ── Analyze button ──────────────────────────────────────────── */
+  #btn-analyze {
+    margin-top: 18px; width: 100%;
+    background: linear-gradient(135deg, var(--accent), #1ae8aa);
+    color: #000; font-family: var(--font-body); font-weight: 500;
+    font-size: 0.95rem; letter-spacing: .02em;
+    padding: 14px; border: none; border-radius: var(--radius);
+    cursor: pointer; transition: opacity .2s, transform .15s;
+  }
+
+  #btn-analyze:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+  #btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── Model info card ─────────────────────────────────────────── */
+  .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+  }
+
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: var(--muted); }
+  .info-val { font-family: var(--font-mono); color: var(--text); }
+  .info-val.good { color: var(--accent); }
+  .info-val.warn { color: var(--accent3); }
+
+  /* ── Results ─────────────────────────────────────────────────── */
+  .results-section { margin-top: 20px; display: none; }
+
+  .result-card {
+    grid-column: 1 / -1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .no-finding-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 22px 28px;
+    background: rgba(74,240,196,0.06);
+    border-bottom: 1px solid rgba(74,240,196,0.15);
+  }
+
+  .nf-icon { font-size: 2rem; }
+  .nf-text h3 { font-family: var(--font-display); font-size: 1.25rem; color: var(--accent); }
+  .nf-text p  { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+  .detected-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 22px 28px;
+    background: rgba(255,107,107,0.06);
+    border-bottom: 1px solid rgba(255,107,107,0.15);
+  }
+
+  .detected-banner h3 { font-family: var(--font-display); font-size: 1.25rem; color: var(--accent2); }
+  .detected-banner p  { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+  /* probability bars */
+  .bars-grid {
+    padding: 24px;
+    display: grid; gap: 10px;
+  }
+
+  .bar-row {
+    display: grid; grid-template-columns: 160px 1fr 52px;
+    align-items: center; gap: 12px;
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 500px) {
+    .bar-row { grid-template-columns: 120px 1fr 48px; }
+  }
+
+  .bar-label { color: var(--muted); text-align: right; }
+  .bar-label.active { color: var(--text); font-weight: 500; }
+
+  .bar-track {
+    height: 6px; background: rgba(255,255,255,0.05);
+    border-radius: 3px; overflow: hidden; position: relative;
+  }
+
+  .bar-fill {
+    height: 100%; border-radius: 3px;
+    background: rgba(74,240,196,0.35);
+    transition: width 0.7s cubic-bezier(.22,.68,0,1.2);
+  }
+
+  .bar-fill.active { background: var(--accent2); }
+
+  .bar-pct {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--muted); text-align: right;
+  }
+
+  .bar-pct.active { color: var(--accent2); }
+
+  /* hash badge */
+  .hash-row {
+    padding: 12px 24px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 0.68rem; color: var(--muted);
+  }
+
+  .hash-badge {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 8px;
+    word-break: break-all;
+  }
+
+  /* ── Loading spinner ─────────────────────────────────────────── */
+  .spinner {
+    display: none; text-align: center; padding: 40px;
+  }
+
+  .spinner-ring {
+    width: 42px; height: 42px; border-radius: 50%;
+    border: 3px solid rgba(74,240,196,0.15);
+    border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner p { color: var(--muted); font-size: 0.85rem; }
+
+  /* ── Error ───────────────────────────────────────────────────── */
+  .error-box {
+    display: none;
+    background: rgba(255,107,107,0.07);
+    border: 1px solid rgba(255,107,107,0.25);
+    border-radius: 10px; padding: 16px 20px;
+    margin-top: 16px; font-size: 0.85rem; color: var(--accent2);
+  }
+
+  /* ── Cache notice ────────────────────────────────────────────── */
+  .cache-notice {
+    display: none;
+    align-items: center; gap: 8px;
+    margin-top: 12px;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--accent3);
+    background: rgba(255,201,74,0.06);
+    border: 1px solid rgba(255,201,74,0.18);
+    border-radius: 8px; padding: 8px 14px;
+  }
+
+  /* ── Footer ──────────────────────────────────────────────────── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center; padding: 28px;
+    font-size: 0.75rem; color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+
+  footer a { color: var(--accent); text-decoration: none; }
+
+  /* ── Animations ─────────────────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-up { animation: fadeUp .5s ease both; }
+  .delay-1 { animation-delay: .08s; }
+  .delay-2 { animation-delay: .16s; }
+  .delay-3 { animation-delay: .24s; }
+</style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🫁</div>
+    <div class="logo-text">Chest<span>Scan</span></div>
+  </div>
+  <div class="api-status">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">connecting…</span>
+  </div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Hero -->
+  <div class="hero fade-up">
+    <div class="hero-label">ChestX-ray14 · 14 Pathologies · EfficientNet / ResNet50</div>
+    <h1>AI-Assisted<br/><em>Chest Radiology</em></h1>
+    <p>Upload a frontal chest X-ray and receive multi-label pathology probabilities in seconds. The same scan always returns identical results.</p>
+  </div>
+
+  <!-- API URL row -->
+  <div class="url-row fade-up delay-1">
+    <input id="api-url" type="text" value="http://localhost:5000" placeholder="http://your-api-host:5000"/>
+    <button class="btn-check" onclick="checkHealth()">Check API</button>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid">
+
+    <!-- Upload card -->
+    <div class="card fade-up delay-2">
+      <div class="card-header">
+        <span class="icon">📤</span> Upload X-Ray
+      </div>
+      <div class="card-body">
+
+        <!-- Upload zone -->
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="file-input" accept="image/*,.dcm"/>
+          <div class="upload-icon">🩻</div>
+          <strong>Drag & drop or click to select</strong>
+          <p>Accepts JPEG, PNG, or standard chest X-ray images.<br/>Max 20 MB.</p>
+        </div>
+
+        <!-- Preview -->
+        <div id="preview-wrap">
+          <img id="preview-img" src="" alt="X-ray preview"/>
+          <div class="preview-overlay" id="file-info"></div>
+          <button class="btn-remove" onclick="resetUpload()">✕ Remove</button>
+        </div>
+
+        <div class="error-box" id="upload-error"></div>
+
+        <div class="cache-notice" id="cache-notice">
+          ⚡ Cached result — this scan was analysed before. Results are deterministic.
+        </div>
+
+        <button id="btn-analyze" disabled onclick="analyze()">
+          Run Analysis
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Model info card -->
+    <div class="card fade-up delay-3">
+      <div class="card-header">
+        <span class="icon">🧠</span> Model Info
+      </div>
+      <div class="card-body" id="model-info-body">
+        <div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">
+          Connect to API to see model details.
+        </div>
+      </div>
+    </div>
+
+    <!-- Results section (spans full width) -->
+    <div class="results-section" id="results-section" style="grid-column:1/-1">
+      <div class="result-card" id="result-card">
+
+        <!-- Spinner -->
+        <div class="spinner" id="spinner">
+          <div class="spinner-ring"></div>
+          <p>Analysing scan…</p>
+        </div>
+
+        <!-- Result content injected here -->
+        <div id="result-content"></div>
+
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+
+</main>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────── -->
+<footer>
+  ChestScan API · Built on NIH ChestX-ray14 ·
+  <a href="#" onclick="copyEndpoints()">Copy API endpoints</a>
+</footer>
+
+<!-- ── Script ───────────────────────────────────────────────────────────── -->
+<script>
+  const CLASSES = [
+    "Atelectasis","Cardiomegaly","Effusion","Infiltration",
+    "Mass","Nodule","Pneumonia","Pneumothorax",
+    "Consolidation","Edema","Emphysema","Fibrosis",
+    "Pleural_Thickening","Hernia"
+  ];
+
+  let selectedFile = null;
+  let lastHash     = null;
+
+  /* ── helpers ─────────────────────────────────────────────────── */
+  function apiBase() {
+    return document.getElementById('api-url').value.trim().replace(/\/$/, '');
+  }
+
+  function setStatus(state, label) {
+    const dot  = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    dot.className = 'dot ' + state;
+    text.textContent = label;
+  }
+
+  /* ── health check ────────────────────────────────────────────── */
+  async function checkHealth() {
+    setStatus('', 'connecting…');
+    try {
+      const res  = await fetch(`${apiBase()}/health`);
+      const data = await res.json();
+
+      if (data.status === 'ready') {
+        setStatus('online', `${data.model.model_name} · AUC ${(data.model.val_auc||0).toFixed(3)}`);
+        renderModelInfo(data.model);
+      } else {
+        setStatus('offline', 'no model loaded');
+        renderModelInfo(null);
+      }
+    } catch {
+      setStatus('offline', 'unreachable');
+      renderModelInfo(null);
+    }
+  }
+
+  function renderModelInfo(m) {
+    const el = document.getElementById('model-info-body');
+    if (!m) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:.85rem;padding:20px 0;text-align:center">API not reachable or no model loaded.</div>`;
+      return;
+    }
+
+    const rows = [
+      ['Architecture',  m.model_name],
+      ['Checkpoint',    m.checkpoint],
+      ['Val AUC',       m.val_auc ? m.val_auc.toFixed(4) : '—', m.val_auc > 0.8 ? 'good' : 'warn'],
+      ['Val F1',        m.val_f1  ? m.val_f1.toFixed(4)  : '—'],
+      ['Trained epoch', m.trained_epoch ?? '—'],
+      ['Threshold',     m.threshold ?? 0.5],
+      ['Device',        m.device],
+      ['Classes',       m.num_classes + ' pathologies'],
+    ];
+
+    el.innerHTML = rows.map(([label, val, cls='']) =>
+      `<div class="info-row">
+        <span class="info-label">${label}</span>
+        <span class="info-val ${cls}">${val}</span>
+      </div>`
+    ).join('');
+  }
+
+  /* ── file select / drag ──────────────────────────────────────── */
+  const zone  = document.getElementById('upload-zone');
+  const input = document.getElementById('file-input');
+
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave',()=> zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); zone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  input.addEventListener('change', () => { if (input.files[0]) handleFile(input.files[0]); });
+
+  function handleFile(file) {
+    if (file.size > 20 * 1024 * 1024) {
+      showUploadError('File exceeds 20 MB limit.');
+      return;
+    }
+    selectedFile = file;
+    hideUploadError();
+    hideCacheNotice();
+    lastHash = null;
+
+    // Preview
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('preview-img').src = e.target.result;
+      const kb = (file.size / 1024).toFixed(0);
+      document.getElementById('file-info').textContent = `${file.name}  ·  ${kb} KB`;
+      zone.style.display = 'none';
+      document.getElementById('preview-wrap').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+
+    document.getElementById('btn-analyze').disabled = false;
+    hideResults();
+  }
+
+  function resetUpload() {
+    selectedFile = null;
+    input.value  = '';
+    zone.style.display = '';
+    document.getElementById('preview-wrap').style.display = 'none';
+    document.getElementById('btn-analyze').disabled = true;
+    hideResults();
+    hideUploadError();
+    hideCacheNotice();
+  }
+
+  /* ── analyze ─────────────────────────────────────────────────── */
+  async function analyze() {
+    if (!selectedFile) return;
+
+    showResults();
+    showSpinner();
+    hideUploadError();
+    hideCacheNotice();
+    document.getElementById('btn-analyze').disabled = true;
+
+    const form = new FormData();
+    form.append('image', selectedFile);
+
+    try {
+      const res  = await fetch(`${apiBase()}/analyze`, { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+
+      hideSpinner();
+      renderResult(data);
+
+      // Cache hint
+      if (lastHash && lastHash === data.image_hash) {
+        showCacheNotice();
+      }
+      lastHash = data.image_hash;
+
+    } catch (err) {
+      hideSpinner();
+      showUploadError('API error: ' + err.message);
+      hideResults();
+    }
+
+    document.getElementById('btn-analyze').disabled = false;
+  }
+
+  /* ── render result ───────────────────────────────────────────── */
+  function renderResult(data) {
+    const detectedCount = data.detected.length;
+    const isClean = data.no_finding;
+
+    let banner = '';
+    if (isClean) {
+      banner = `
+        <div class="no-finding-banner">
+          <div class="nf-icon">✅</div>
+          <div class="nf-text">
+            <h3>No Finding</h3>
+            <p>No pathologies detected above the ${data.threshold} confidence threshold.</p>
+          </div>
+        </div>`;
+    } else {
+      const list = data.detected.map(d => d.condition).join(', ');
+      banner = `
+        <div class="detected-banner">
+          <div class="nf-icon">⚠️</div>
+          <div class="nf-text">
+            <h3>${detectedCount} condition${detectedCount>1?'s':''} detected</h3>
+            <p>${list}</p>
+          </div>
+        </div>`;
+    }
+
+    const bars = data.predictions.map(p => {
+      const pct   = (p.probability * 100).toFixed(1);
+      const width = (p.probability * 100).toFixed(2);
+      const act   = p.detected ? 'active' : '';
+      return `
+        <div class="bar-row">
+          <div class="bar-label ${act}">${p.condition}</div>
+          <div class="bar-track">
+            <div class="bar-fill ${act}" style="width:${width}%"></div>
+          </div>
+          <div class="bar-pct ${act}">${pct}%</div>
+        </div>`;
+    }).join('');
+
+    const hash = data.image_hash;
+
+    document.getElementById('result-content').innerHTML = `
+      ${banner}
+      <div class="bars-grid">${bars}</div>
+      <div class="hash-row">
+        🔑 Scan fingerprint: <span class="hash-badge">${hash}</span>
+      </div>
+    `;
+  }
+
+  /* ── UI helpers ─────────────────────────────────────────────── */
+  function showResults()  { document.getElementById('results-section').style.display = 'block'; }
+  function hideResults()  { document.getElementById('results-section').style.display = 'none'; }
+  function showSpinner()  { document.getElementById('spinner').style.display = 'block'; document.getElementById('result-content').innerHTML = ''; }
+  function hideSpinner()  { document.getElementById('spinner').style.display = 'none'; }
+  function showUploadError(msg) {
+    const el = document.getElementById('upload-error');
+    el.textContent = msg; el.style.display = 'block';
+  }
+  function hideUploadError() { document.getElementById('upload-error').style.display = 'none'; }
+  function showCacheNotice()  { document.getElementById('cache-notice').style.display = 'flex'; }
+  function hideCacheNotice()  { document.getElementById('cache-notice').style.display = 'none'; }
+
+  function copyEndpoints() {
+    const base = apiBase();
+    const txt = `GET  ${base}/health\nGET  ${base}/classes\nPOST ${base}/analyze  (multipart: image file)`;
+    navigator.clipboard.writeText(txt).then(() => alert('Endpoints copied!'));
+    return false;
+  }
+
+  /* ── init ───────────────────────────────────────────────────── */
+  checkHealth();
+  // Re-check every 30 s
+  setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>

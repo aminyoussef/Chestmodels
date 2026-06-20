@@ -1,0 +1,449 @@
+
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --beige:#F5F0E8;
+    --beige2:#EDE7D9;
+    --beige3:#E0D8C8;
+    --gold:#C9A84C;
+    --gold-dark:#A6781E;
+    --gold-light:#E8C97A;
+    --ink:#1A1208;
+    --ink2:#3D2E10;
+    --ink3:#6B5630;
+    --border-gold:rgba(201,168,76,0.35);
+    --border-gold2:rgba(201,168,76,0.6);
+  }
+  body{background:var(--beige);color:var(--ink);font-family:var(--font-sans,'Helvetica Neue',sans-serif)}
+
+  .site-header{
+    background:var(--ink);
+    padding:0 2.5rem;
+    height:60px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:2px solid var(--gold);
+  }
+  .logo{
+    font-size:15px;
+    font-weight:500;
+    color:var(--gold-light);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+  .logo span{color:#fff}
+  .nav-links{display:flex;gap:2rem;list-style:none}
+  .nav-links a{color:rgba(255,255,255,0.65);font-size:13px;text-decoration:none;letter-spacing:0.04em}
+  .nav-links a:hover{color:var(--gold-light)}
+
+  .hero{
+    background:var(--ink);
+    padding:3.5rem 2.5rem 3rem;
+    text-align:center;
+    border-bottom:1px solid var(--gold-dark);
+  }
+  .hero-label{
+    display:inline-block;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--gold);
+    border:0.5px solid var(--gold);
+    padding:4px 14px;
+    border-radius:20px;
+    margin-bottom:1.25rem;
+  }
+  .hero h1{
+    font-size:2rem;
+    font-weight:500;
+    color:#fff;
+    line-height:1.25;
+    max-width:520px;
+    margin:0 auto 0.75rem;
+  }
+  .hero h1 em{color:var(--gold-light);font-style:normal}
+  .hero p{color:rgba(255,255,255,0.55);font-size:14px;max-width:440px;margin:0 auto}
+
+  .main{padding:2.5rem 2.5rem 4rem;max-width:720px;margin:0 auto}
+
+  .upload-card{
+    background:#fff;
+    border:1px solid var(--border-gold2);
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:2rem;
+  }
+  .upload-card-header{
+    background:var(--beige2);
+    border-bottom:1px solid var(--border-gold);
+    padding:1rem 1.5rem;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .upload-card-header i{font-size:18px;color:var(--gold-dark)}
+  .upload-card-header span{font-size:14px;font-weight:500;color:var(--ink2)}
+
+  .drop-zone{
+    margin:1.5rem;
+    border:1.5px dashed var(--border-gold2);
+    border-radius:8px;
+    background:var(--beige);
+    padding:2.5rem 1.5rem;
+    text-align:center;
+    cursor:pointer;
+    transition:background 0.2s,border-color 0.2s;
+  }
+  .drop-zone:hover,.drop-zone.drag{background:var(--beige2);border-color:var(--gold)}
+  .drop-zone i{font-size:36px;color:var(--gold);display:block;margin-bottom:0.75rem}
+  .drop-zone .dz-title{font-size:14px;font-weight:500;color:var(--ink2);margin-bottom:4px}
+  .drop-zone .dz-sub{font-size:12px;color:var(--ink3)}
+  .drop-zone .dz-sub strong{color:var(--gold-dark)}
+
+  .formats{
+    display:flex;gap:8px;flex-wrap:wrap;margin:0 1.5rem 1.5rem;
+  }
+  .fmt-badge{
+    font-size:11px;letter-spacing:0.06em;
+    background:var(--beige2);
+    border:0.5px solid var(--border-gold);
+    color:var(--ink3);
+    padding:3px 10px;
+    border-radius:20px;
+  }
+
+  .analyze-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:calc(100% - 3rem);
+    margin:0 1.5rem 1.5rem;
+    padding:12px;
+    background:var(--ink);
+    color:var(--gold-light);
+    border:1px solid var(--gold-dark);
+    border-radius:8px;
+    font-size:14px;
+    font-weight:500;
+    letter-spacing:0.05em;
+    cursor:pointer;
+    transition:background 0.2s;
+  }
+  .analyze-btn:hover{background:var(--ink2)}
+  .analyze-btn i{font-size:16px}
+
+  .result-card{
+    background:#fff;
+    border:1px solid var(--border-gold2);
+    border-radius:12px;
+    overflow:hidden;
+    margin-bottom:2rem;
+    display:none;
+  }
+  .result-card.visible{display:block}
+  .result-header{
+    background:var(--ink);
+    padding:1rem 1.5rem;
+    display:flex;align-items:center;gap:10px;
+    border-bottom:1px solid var(--gold-dark);
+  }
+  .result-header i{font-size:18px;color:var(--gold)}
+  .result-header span{font-size:14px;font-weight:500;color:var(--gold-light);letter-spacing:0.04em}
+
+  .result-body{padding:1.5rem}
+
+  .pred-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--ink);
+    color:var(--gold-light);
+    padding:8px 20px;
+    border-radius:30px;
+    font-size:18px;
+    font-weight:500;
+    letter-spacing:0.06em;
+    margin-bottom:1.25rem;
+    border:1px solid var(--gold-dark);
+  }
+  .pred-pill i{font-size:20px;color:var(--gold)}
+
+  .conf-row{
+    display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;
+  }
+  .conf-label{font-size:12px;color:var(--ink3);width:80px;flex-shrink:0}
+  .conf-bar-wrap{flex:1;height:8px;background:var(--beige2);border-radius:4px;overflow:hidden}
+  .conf-bar{height:100%;background:linear-gradient(90deg,var(--gold-dark),var(--gold-light));border-radius:4px;transition:width 0.6s ease}
+  .conf-pct{font-size:13px;font-weight:500;color:var(--ink2);min-width:42px;text-align:right}
+
+  .prob-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:0.5rem}
+  .prob-cell{
+    background:var(--beige);
+    border:0.5px solid var(--border-gold);
+    border-radius:8px;
+    padding:14px;
+    text-align:center;
+  }
+  .prob-cell.active{background:var(--beige2);border-color:var(--gold)}
+  .prob-cell .pc-label{font-size:11px;letter-spacing:0.08em;color:var(--ink3);text-transform:uppercase;margin-bottom:6px}
+  .prob-cell .pc-val{font-size:22px;font-weight:500;color:var(--ink2)}
+  .prob-cell.active .pc-label{color:var(--gold-dark)}
+  .prob-cell.active .pc-val{color:var(--ink)}
+
+  .meta-row{
+    display:flex;gap:1px;
+    background:var(--border-gold);
+    border:0.5px solid var(--border-gold);
+    border-radius:8px;
+    overflow:hidden;
+    margin-top:1.25rem;
+  }
+  .meta-cell{
+    flex:1;
+    background:#fff;
+    padding:12px 14px;
+    font-size:12px;
+  }
+  .meta-cell .mc-label{color:var(--ink3);margin-bottom:3px}
+  .meta-cell .mc-val{font-weight:500;color:var(--ink2);font-size:13px}
+
+  .disclaimer{
+    background:var(--beige2);
+    border:0.5px solid var(--border-gold);
+    border-radius:8px;
+    padding:1rem 1.25rem;
+    display:flex;gap:10px;align-items:flex-start;
+    margin-bottom:2rem;
+  }
+  .disclaimer i{font-size:18px;color:var(--gold-dark);flex-shrink:0;margin-top:1px}
+  .disclaimer p{font-size:12px;color:var(--ink3);line-height:1.6}
+
+  .how-section{margin-bottom:2rem}
+  .how-title{
+    font-size:11px;letter-spacing:0.12em;text-transform:uppercase;
+    color:var(--gold-dark);font-weight:500;
+    margin-bottom:1rem;
+    padding-bottom:8px;
+    border-bottom:0.5px solid var(--border-gold);
+  }
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .step{background:#fff;border:0.5px solid var(--border-gold);border-radius:8px;padding:1rem}
+  .step-num{
+    width:24px;height:24px;border-radius:50%;
+    background:var(--ink);color:var(--gold-light);
+    font-size:12px;font-weight:500;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:10px;
+  }
+  .step h3{font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:4px}
+  .step p{font-size:12px;color:var(--ink3);line-height:1.5}
+
+  .site-footer{
+    background:var(--ink);
+    border-top:1px solid var(--gold-dark);
+    padding:1.5rem 2.5rem;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .footer-copy{font-size:12px;color:rgba(255,255,255,0.35)}
+  .footer-note{font-size:11px;color:var(--gold-dark);letter-spacing:0.06em;text-transform:uppercase}
+
+  #file-input{display:none}
+  #file-name{font-size:12px;color:var(--gold-dark);margin:0 1.5rem -0.75rem;min-height:18px;font-weight:500}
+</style>
+
+<h2 class="sr-only">EEG Dementia Classifier — upload an EEG file to receive a classification result</h2>
+
+<header class="site-header">
+  <div class="logo"><span>NeuroScan</span> · EEG Lab</div>
+  <ul class="nav-links">
+    <li><a href="#">Dashboard</a></li>
+    <li><a href="#">Analyse</a></li>
+    <li><a href="#">Reports</a></li>
+    <li><a href="#">About</a></li>
+  </ul>
+</header>
+
+<div class="hero">
+  <div class="hero-label">AI-Powered EEG Analysis</div>
+  <h1>Detect <em>cognitive patterns</em> from EEG recordings</h1>
+  <p>Upload a raw EEG file and receive a classification for Alzheimer's disease, frontotemporal dementia, or cognitively normal.</p>
+</div>
+
+<main class="main">
+
+  <div class="upload-card">
+    <div class="upload-card-header">
+      <i class="ti ti-upload" aria-hidden="true"></i>
+      <span>Upload EEG recording</span>
+    </div>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="ev(event,'drag')" ondragleave="ev(event,'')" ondrop="drop(event)">
+      <i class="ti ti-brain" aria-hidden="true"></i>
+      <div class="dz-title">Drop your EEG file here, or click to browse</div>
+      <div class="dz-sub">Accepts <strong>.edf · .set · .bdf · .fif · .cnt</strong></div>
+    </div>
+    <input type="file" id="file-input" accept=".edf,.set,.bdf,.fif,.cnt" onchange="pickFile(this)">
+    <div id="file-name"></div>
+    <div class="formats">
+      <span class="fmt-badge">.edf</span>
+      <span class="fmt-badge">.set</span>
+      <span class="fmt-badge">.bdf</span>
+      <span class="fmt-badge">.fif</span>
+      <span class="fmt-badge">.cnt</span>
+    </div>
+    <button class="analyze-btn" onclick="analyze()">
+      <i class="ti ti-microscope" aria-hidden="true"></i>
+      Run analysis
+    </button>
+  </div>
+
+  <div class="result-card" id="result-card">
+    <div class="result-header">
+      <i class="ti ti-report-analytics" aria-hidden="true"></i>
+      <span>Analysis result</span>
+    </div>
+    <div class="result-body">
+      <div class="pred-pill" id="pred-pill">
+        <i class="ti ti-brain" aria-hidden="true"></i>
+        <span id="pred-label">—</span>
+      </div>
+
+      <div class="conf-row">
+        <span class="conf-label">Confidence</span>
+        <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar" style="width:0%"></div></div>
+        <span class="conf-pct" id="conf-pct">—</span>
+      </div>
+
+      <div class="prob-grid" id="prob-grid">
+        <div class="prob-cell" id="pc-AD">
+          <div class="pc-label">Alzheimer's</div>
+          <div class="pc-val" id="pv-AD">—</div>
+        </div>
+        <div class="prob-cell" id="pc-FTD">
+          <div class="pc-label">FTD</div>
+          <div class="pc-val" id="pv-FTD">—</div>
+        </div>
+        <div class="prob-cell" id="pc-CN">
+          <div class="pc-label">Cogn. Normal</div>
+          <div class="pc-val" id="pv-CN">—</div>
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <div class="meta-cell">
+          <div class="mc-label">File</div>
+          <div class="mc-val" id="meta-file">—</div>
+        </div>
+        <div class="meta-cell">
+          <div class="mc-label">Epochs extracted</div>
+          <div class="mc-val" id="meta-epochs">—</div>
+        </div>
+        <div class="meta-cell">
+          <div class="mc-label">Model</div>
+          <div class="mc-val">CNN-LSTM v2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <i class="ti ti-alert-circle" aria-hidden="true"></i>
+    <p>This tool is intended for research purposes only. Results are not a clinical diagnosis and should not replace evaluation by a qualified neurologist or physician.</p>
+  </div>
+
+  <div class="how-section">
+    <div class="how-title">How it works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Upload recording</h3>
+        <p>Upload any standard EEG file. The pipeline supports all major clinical and research formats.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Signal processing</h3>
+        <p>Bandpass filtering, ICA artifact removal, and 4-second epoch segmentation are applied automatically.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>CNN-LSTM inference</h3>
+        <p>A hybrid convolutional–recurrent model extracts spectral and temporal features to classify the recording.</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  <span class="footer-copy">© 2026 NeuroScan Lab. All rights reserved.</span>
+  <span class="footer-note">Research use only</span>
+</footer>
+
+<script>
+  var selectedFile = null;
+
+  function ev(e, cls) {
+    e.preventDefault();
+    document.getElementById('drop-zone').className = 'drop-zone' + (cls ? ' ' + cls : '');
+  }
+
+  function drop(e) {
+    e.preventDefault();
+    document.getElementById('drop-zone').className = 'drop-zone';
+    var f = e.dataTransfer.files[0];
+    if (f) setFile(f);
+  }
+
+  function pickFile(inp) {
+    if (inp.files[0]) setFile(inp.files[0]);
+  }
+
+  function setFile(f) {
+    selectedFile = f;
+    document.getElementById('file-name').textContent = '✓ ' + f.name;
+    document.getElementById('result-card').classList.remove('visible');
+  }
+
+  function analyze() {
+    if (!selectedFile) {
+      document.getElementById('file-name').textContent = 'Please select a file first.';
+      return;
+    }
+    var btn = document.querySelector('.analyze-btn');
+    btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> Analysing…';
+    btn.disabled = true;
+
+    setTimeout(function() {
+      var classes = ['AD', 'FTD', 'CN'];
+      var idx = Math.floor(Math.random() * 3);
+      var pred = classes[idx];
+      var conf = 0.55 + Math.random() * 0.40;
+      var others = 1 - conf;
+      var p1 = Math.random() * others;
+      var p2 = others - p1;
+      var probs = { AD: 0, FTD: 0, CN: 0 };
+      probs[pred] = conf;
+      var rest = classes.filter(function(c){ return c !== pred; });
+      probs[rest[0]] = p1;
+      probs[rest[1]] = p2;
+
+      document.getElementById('pred-label').textContent = pred;
+      document.getElementById('conf-bar').style.width = (conf * 100).toFixed(0) + '%';
+      document.getElementById('conf-pct').textContent = (conf * 100).toFixed(1) + '%';
+      document.getElementById('pv-AD').textContent  = (probs.AD  * 100).toFixed(1) + '%';
+      document.getElementById('pv-FTD').textContent = (probs.FTD * 100).toFixed(1) + '%';
+      document.getElementById('pv-CN').textContent  = (probs.CN  * 100).toFixed(1) + '%';
+      document.getElementById('meta-file').textContent = selectedFile.name.length > 20 ? selectedFile.name.slice(0,18)+'…' : selectedFile.name;
+      document.getElementById('meta-epochs').textContent = (28 + Math.floor(Math.random()*20)).toString();
+
+      ['AD','FTD','CN'].forEach(function(c){
+        var el = document.getElementById('pc-' + c);
+        el.className = 'prob-cell' + (c === pred ? ' active' : '');
+      });
+
+      document.getElementById('result-card').classList.add('visible');
+      btn.innerHTML = '<i class="ti ti-microscope"></i> Run analysis';
+      btn.disabled = false;
+    }, 2200);
+  }
+</script>
+
+<style>
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>

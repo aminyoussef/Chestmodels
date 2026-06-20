@@ -1,0 +1,56 @@
+# Medical Scans AI — EEG + Chest X-ray (run from Ai/ folder)
+#   ./start.sh        (Linux / VPS)
+#   .\start.ps1       (Windows)
+
+name: neurodetect-inference
+
+services:
+  eeg-inference:
+    build:
+      context: ./EEG
+      dockerfile: Dockerfile
+    container_name: neurodetect-eeg
+    restart: unless-stopped
+    ports:
+      - "${EEG_HOST_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      EEG_MODEL_DIR: /app/eeg_web_output
+      PORT: "8000"
+      EEG_SERVICE_API_KEY: ${EEG_SERVICE_API_KEY:-}
+    volumes:
+      - ./EEG/eeg_web_output:/app/eeg_web_output:ro
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    networks:
+      - inference
+
+  chest-inference:
+    build:
+      context: ./Chest
+      dockerfile: Dockerfile
+    container_name: neurodetect-chest
+    restart: unless-stopped
+    ports:
+      - "${CHEST_HOST_PORT:-5000}:5000"
+    env_file:
+      - .env
+    environment:
+      MODEL_DIR: /app/models
+      THRESHOLD: ${THRESHOLD:-0.5}
+      CHEST_SERVICE_API_KEY: ${CHEST_SERVICE_API_KEY:-}
+    volumes:
+      - ./Chest/models:/app/models:ro
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    networks:
+      - inference
+
+networks:
+  inference:
+    name: neurodetect-inference

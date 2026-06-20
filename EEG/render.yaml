@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: medical-scans-eeg
+    runtime: python
+    rootDir: Ai/EEG
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: EEG_MODEL_DIR
+        value: /opt/render/project/src/Ai/EEG/eeg_web_output
+      - key: EEG_SERVICE_API_KEY
+        sync: false
+    plan: starter

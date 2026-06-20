@@ -1,0 +1,12 @@
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+*.md
+eeg_dementia_classifier_ui.html
+render.yaml
+Procfile
+docker-compose.override.yml
