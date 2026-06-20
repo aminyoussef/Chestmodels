@@ -19,7 +19,7 @@ download() {
 
 download "$REPO/EEG/eeg_web_output/eeg_model.pt" "$ROOT/EEG/eeg_web_output/eeg_model.pt"
 download "$REPO/EEG/eeg_web_output/scaler.pkl" "$ROOT/EEG/eeg_web_output/scaler.pkl"
-download "$REPO/Chest/models/best_model.pth" "$ROOT/Chest/models/best_model.pth"
+download "$REPO/Chest/models/best_model_fixed.pth" "$ROOT/Chest/models/best_model_fixed.pth"
 
 echo ""
 echo "Models ready. Restarting containers..."

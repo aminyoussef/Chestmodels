@@ -154,6 +154,8 @@ def find_best_checkpoint(model_dir: Path):
             log.info(f"  Found checkpoint: {p.name}  val_auc={auc:.4f}")
         except Exception as e:
             log.warning(f"  Skipping {p.name}: {e}")
+            if "pathlib._local" in str(e):
+                log.warning("  Hint: use best_model_fixed.pth (Python 3.11 compatible) instead of best_model.pth")
 
     if not candidates:
         return None, None
