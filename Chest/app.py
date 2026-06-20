@@ -272,9 +272,22 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 load_model()
 
 
+@app.route("/", methods=["GET"])
 @app.route("/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ready" if _model else "no_model", "model": _model_meta or None})
+    ready = _model is not None
+    return jsonify({
+        "status": "ok" if ready else "no_model",
+        "model_ready": ready,
+        "service": "chest-xray-classifier",
+        "classes": _model_meta.get("classes", CLASSES) if _model_meta else CLASSES,
+        "model": _model_meta or None,
+        "endpoints": {
+            "health": "GET /health",
+            "classes": "GET /classes",
+            "analyze": "POST /analyze (multipart field: image)",
+        },
+    })
 
 
 @app.route("/classes", methods=["GET"])
