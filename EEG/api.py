@@ -106,8 +106,13 @@ class EEG_CNN_LSTM(nn.Module):
 # ── Load artefacts ────────────────────────────────────────────
 print(f"[startup] Loading model from: {os.path.abspath(MODEL_DIR)}")
 clf, scaler, n_feats = None, None, None
+_model_load_error = None
 try:
-    ckpt    = torch.load(os.path.join(MODEL_DIR,'eeg_model.pt'), map_location='cpu')
+    ckpt    = torch.load(
+        os.path.join(MODEL_DIR, 'eeg_model.pt'),
+        map_location='cpu',
+        weights_only=False,
+    )
     n_feats = ckpt['n_feats']
     clf     = EEG_CNN_LSTM(n_feats, ckpt['n_classes'])
     clf.load_state_dict(ckpt['model_state'])
@@ -116,10 +121,13 @@ try:
         scaler = pickle.load(f)
     print(f"[startup] ✓ Model ready.  n_feats={n_feats}")
 except FileNotFoundError:
-    print(f"[startup] ⚠  No trained model found in '{MODEL_DIR}'.")
+    _model_load_error = f"No trained model found in '{MODEL_DIR}'."
+    print(f"[startup] ⚠  {_model_load_error}")
     print( "[startup]    Run the notebook (Cells 1-10) to train and save the model first.")
 except Exception as e:
+    _model_load_error = str(e)
     print(f"[startup] ⚠  Error loading model: {e}")
+    traceback.print_exc()
 
 # ── Preprocessing ─────────────────────────────────────────────
 def spectral_entropy(psd):
@@ -252,6 +260,8 @@ def health():
     return {
         'status': 'ok',
         'model_ready': clf is not None and scaler is not None,
+        'model_dir': MODEL_DIR,
+        'load_error': _model_load_error,
         'service': 'eeg-dementia-classifier',
         'classes': CLASS_NAMES,
         'supported_exts': sorted(SUPPORTED_EXTS),
