@@ -62,45 +62,48 @@ INTERPOLATION_RULES = {
 BANDS      = {'delta':(0.5,4),'theta':(4,8),'alpha':(8,13),'beta':(13,30),'gamma':(30,45)}
 HEMI_PAIRS = [('F3','F4'),('T7','T8'),('P7','P8'),('O1','O2')]
 
-# ── Model definition (must match notebook exactly) ────────────
-class ResBlock(nn.Module):
-    def __init__(self, ch, k=3):
+# ── Model definition (must match saved eeg_model.pt exactly) ──
+class AttnPool(nn.Module):
+    """Learned attention pooling — checkpoint keys: attn.attn.weight/bias"""
+    def __init__(self, dim):
         super().__init__()
-        self.net = nn.Sequential(
-            nn.Conv1d(ch,ch,k,padding=k//2), nn.GELU(), nn.BatchNorm1d(ch),
-            nn.Conv1d(ch,ch,k,padding=k//2), nn.BatchNorm1d(ch))
-        self.act = nn.GELU()
-    def forward(self, x): return self.act(x + self.net(x))
+        self.attn = nn.Linear(dim, 1)
+
+    def forward(self, x):
+        w = torch.softmax(self.attn(x).squeeze(-1), dim=1)
+        return (x * w.unsqueeze(-1)).sum(dim=1)
+
 
 class EEG_CNN_LSTM(nn.Module):
     def __init__(self, n_feats, n_classes=3):
         super().__init__()
-        self.stem  = nn.Sequential(
-            nn.Conv1d(1,64,7,padding=3), nn.GELU(), nn.BatchNorm1d(64), nn.Dropout(0.2))
-        self.res1  = ResBlock(64)
-        self.down1 = nn.Conv1d(64,128,3,stride=2,padding=1)
-        self.res2  = ResBlock(128)
-        self.down2 = nn.Conv1d(128,256,3,stride=2,padding=1)
-        self.res3  = ResBlock(256)
-        self.lstm  = nn.LSTM(256,128,num_layers=2,batch_first=True,
-                             dropout=0.3,bidirectional=True)
-        self.attn  = nn.MultiheadAttention(256,4,batch_first=True,dropout=0.1)
-        self.norm  = nn.LayerNorm(256)
-        self.head  = nn.Sequential(
-            nn.Linear(256,128), nn.GELU(), nn.Dropout(0.3),
-            nn.Linear(128,64),  nn.GELU(), nn.Dropout(0.2),
-            nn.Linear(64,n_classes))
+        self.cnn = nn.Sequential(
+            nn.Conv1d(1, 64, kernel_size=7, padding=3),
+            nn.GELU(),
+            nn.BatchNorm1d(64),
+            nn.Conv1d(64, 128, kernel_size=5, padding=2),
+            nn.GELU(),
+            nn.BatchNorm1d(128),
+            nn.Conv1d(128, 256, kernel_size=3, padding=1),
+            nn.GELU(),
+            nn.BatchNorm1d(256),
+        )
+        self.lstm = nn.LSTM(
+            256, 128, num_layers=2, batch_first=True,
+            dropout=0.3, bidirectional=True,
+        )
+        self.attn = AttnPool(256)
+        self.head = nn.Sequential(
+            nn.Linear(256, 128), nn.GELU(), nn.Dropout(0.3),
+            nn.Linear(128, 64), nn.GELU(), nn.Dropout(0.2),
+            nn.Linear(64, n_classes),
+        )
+
     def forward(self, x):
-        x = self.stem(x)
-        x = self.res1(x)
-        x = F.gelu(self.down1(x))
-        x = self.res2(x)
-        x = F.gelu(self.down2(x))
-        x = self.res3(x)
-        x = x.permute(0,2,1)
-        x,_ = self.lstm(x)
-        a,_ = self.attn(x,x,x)
-        x   = self.norm(x+a).mean(dim=1)
+        x = self.cnn(x)
+        x = x.permute(0, 2, 1)
+        x, _ = self.lstm(x)
+        x = self.attn(x)
         return self.head(x)
 
 # ── Load artefacts ────────────────────────────────────────────
