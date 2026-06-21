@@ -170,12 +170,81 @@ def extract_features(epochs, sfreq=TARGET_SFREQ):
         rows.append(row)
     return np.array(rows, dtype=np.float32)
 
-def preprocess(path):
+def _read_magic(path, n=16):
+    with open(path, 'rb') as f:
+        return f.read(n)
+
+
+def _friendly_load_error(path, exc):
+    """Turn low-level scipy/MNE errors into actionable upload hints."""
+    msg = str(exc)
+    low = msg.lower()
+    name = pathlib.Path(path).name
+    stem = pathlib.Path(path).stem
+
+    if 'unknown mat file type' in low:
+        return (
+            f"'{name}' is not a valid EEGLAB .set (MATLAB) file. "
+            'Use .edf if possible, or re-export from EEGLAB with "File → Save current dataset" '
+            'using MATLAB v6/v7 format (not v7.3). If the recording is EDF/BDF, upload with the correct extension.'
+        )
+    if 'hdf' in low or 'v7.3' in low or 'please use hdf reader' in low:
+        return (
+            f"'{name}' uses MATLAB v7.3 (.set). Re-save in EEGLAB as MATLAB v6/v7, or export as .edf."
+        )
+    if 'fdt' in low and ('not find' in low or 'could not' in low or 'no such file' in low):
+        return (
+            f"Missing companion data file '{stem}.fdt' for '{name}'. "
+            f'Upload both {stem}.set and {stem}.fdt together, or export a single-file .set/.edf from EEGLAB.'
+        )
+    if 'buffer is too small' in low or 'uint16' in low:
+        return f"Could not decode EEGLAB metadata in '{name}'. Re-export as .edf or re-save the .set from EEGLAB."
+    return msg
+
+
+def load_raw_eeg(path):
+    """Load supported EEG formats with EEGLAB/.set fallbacks."""
     ext = pathlib.Path(path).suffix.lower()
-    loaders = {'.set':mne.io.read_raw_eeglab, '.edf':mne.io.read_raw_edf,
-               '.bdf':mne.io.read_raw_bdf,    '.fif':mne.io.read_raw_fif,
-               '.cnt':mne.io.read_raw_cnt}
-    raw = loaders[ext](path, preload=True, verbose='ERROR')
+    p = pathlib.Path(path)
+
+    if ext == '.set':
+        magic = _read_magic(path, 8)
+        if magic.startswith(b'\x89HDF'):
+            pass  # MATLAB v7.3 — MNE uses h5py when available
+        elif not magic.startswith(b'MATLAB'):
+            # Misnamed clinical file (common: EDF uploaded as .set)
+            if len(magic) >= 8 and magic[0:1] in (b'0', b'1') and magic[1:8] == b'       ':
+                return mne.io.read_raw_edf(path, preload=True, verbose='ERROR')
+            if magic.startswith(b'BIOSEMI'):
+                return mne.io.read_raw_bdf(path, preload=True, verbose='ERROR')
+            raise ValueError(_friendly_load_error(path, Exception('Unknown mat file type')))
+
+        last_err = None
+        for codec in ('latin-1', 'utf-8', 'ascii'):
+            try:
+                return mne.io.read_raw_eeglab(
+                    path, preload=True, verbose='ERROR', uint16_codec=codec,
+                )
+            except Exception as e:
+                last_err = e
+        raise ValueError(_friendly_load_error(path, last_err or Exception('read failed')))
+
+    loaders = {
+        '.edf': mne.io.read_raw_edf,
+        '.bdf': mne.io.read_raw_bdf,
+        '.fif': mne.io.read_raw_fif,
+        '.cnt': mne.io.read_raw_cnt,
+    }
+    if ext not in loaders:
+        raise ValueError(f"Unsupported format '{ext}'. Accepted: {sorted(SUPPORTED_EXTS)}")
+    try:
+        return loaders[ext](path, preload=True, verbose='ERROR')
+    except Exception as e:
+        raise ValueError(_friendly_load_error(path, e)) from e
+
+
+def preprocess(path):
+    raw = load_raw_eeg(path)
     raw.pick_types(eeg=True)
     raw.filter(0.5, 45., method='fir', fir_design='firwin', verbose='ERROR')
     data, chs = raw.get_data(), list(raw.ch_names)
@@ -290,8 +359,8 @@ async def predict(
         result = run_inference(tmp_path)
     except ValueError as e:
         raise HTTPException(422, str(e))
-    except Exception:
-        raise HTTPException(500, traceback.format_exc())
+    except Exception as e:
+        raise HTTPException(422, _friendly_load_error(tmp_path, e))
     finally:
         os.unlink(tmp_path)
     return PredictionResponse(filename=file.filename, **result)

@@ -9,6 +9,7 @@ python-dotenv>=1.0.0
 
 # EEG (MNE reads .edf/.bdf natively — pyEDFlib NOT needed)
 mne>=1.6.0
+h5py>=3.10.0
 
 # ML — PyTorch works on Python 3.13, TensorFlow does not
 torch>=2.2.0
